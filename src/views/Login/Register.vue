@@ -93,7 +93,7 @@
           </div>
         </form>
   
-        <div class="mt-6">
+        <!-- <div class="mt-6">
           <div class="relative">
             <div class="absolute inset-0 flex items-center">
               <div class="w-full border-t border-gray-300"></div>
@@ -115,7 +115,7 @@
               Sign in with Google
             </button>
           </div>
-        </div>
+        </div> -->
   
         <div class="text-center mt-4">
           <p class="text-sm">
