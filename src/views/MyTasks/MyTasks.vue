@@ -3,7 +3,20 @@
       <h1 class="text-2xl font-semibold mb-4">Task Board</h1>
       <h2 class="text-lg font-semibold mb-6">{{ projectName?.name || 'Loyiha' }}</h2>
   
-      <div class="flex gap-6 overflow-x-auto">
+      <!-- Agar loyiha ID bo'lmasa yoki xatolik bo'lsa -->
+      <div v-if="!projectId" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+        <p class="font-bold">Xatolik!</p>
+        <p>Loyiha ma'lumotlari topilmadi. Iltimos, loyihalar ro'yxatiga qaytib, loyihani qayta tanlang.</p>
+        <router-link to="/projects" class="text-blue-600 hover:underline mt-2 inline-block">Loyihalar ro'yxatiga qaytish</router-link>
+      </div>
+  
+      <!-- Ma'lumotlar yuklanayotgan vaqtda ko'rsatiladi -->
+      <div v-if="isLoading" class="flex justify-center items-center h-40">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <p class="ml-3">Ma'lumotlar yuklanmoqda...</p>
+      </div>
+  
+      <div v-else-if="projectId" class="flex gap-6 overflow-x-auto">
         <div
           v-for="column in columns"
           :key="column.status"
@@ -50,7 +63,12 @@
         </div>
       </div>
   
-      <router-link to="/projects" @click="clearSessionStorage" class="float-right my-[200px] mr-[100px] text-white font-simebold bg-[#8065EF] py-[5px] px-[15px] rounded-lg">Back</router-link>
+      <div class="flex justify-between mt-8">
+        <button @click="refreshData" class="bg-indigo-500 text-white px-4 py-2 rounded-lg">
+          <i class='bx bx-refresh mr-1'></i> Ma'lumotlarni yangilash
+        </button>
+      </div>
+  
       <!-- Add Task Modal -->
       <div v-if="isAddModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
         <div class="bg-white p-6 rounded-lg w-96">
@@ -61,9 +79,9 @@
   
           <!-- Priority Dropdown -->
           <select v-model="newTask.priority" class="border p-2 w-full mb-4">
-            <option value="easy">Easy</option>
+            <option value="low">Easy</option>
             <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
+            <option value="high">Hard</option>
           </select>
   
           <div class="flex gap-2 justify-end">
@@ -72,8 +90,6 @@
           </div>
         </div>
       </div>
-
-
   
       <!-- Edit Task Modal -->
       <div v-if="isEditModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
@@ -84,9 +100,9 @@
           <input type="date" v-model="editTaskData.date" class="w-full mb-4 p-2 border rounded" />
           <!-- Priority Dropdown -->
           <select v-model="editTaskData.priority" class="border p-2 w-full mb-4">
-            <option value="easy">Easy</option>
+            <option value="low">Easy</option>
             <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
+            <option value="high">Hard</option>
           </select>
   
           <div class="flex gap-2 justify-end">
@@ -111,8 +127,8 @@
   </template>
   
   <script setup>
-  import { ref, onMounted } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { ref, onMounted, watch } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
   import { db } from '../../firebase/firebase'
   import {
     collection,
@@ -122,28 +138,62 @@
     deleteDoc,
     doc,
     query,
-    where
+    where,
+    onSnapshot
   } from 'firebase/firestore'
   
   const route = useRoute()
+  const router = useRouter()
+  const isLoading = ref(true)
   
-  // Loyiha ma'lumotlarini olish
-  let projectName = null
-  try {
-    projectName = JSON.parse(sessionStorage.getItem('currentProjectName'))
-    console.log('Loyiha ma\'lumotlari:', projectName)
-  } catch (error) {
-    console.error('Loyiha ma\'lumotlarini o\'qishda xatolik:', error)
-    projectName = { name: 'Noma\'lum loyiha', id: null }
+  // Loyiha ma'lumotlarini olish - yaxshilangan usul
+  const projectName = ref(null)
+  const projectId = ref(null)
+  
+  // SessionStorage'dan ma'lumotlarni olish funksiyasi
+  const getProjectFromStorage = () => {
+    try {
+      const storedProject = sessionStorage.getItem('currentProjectName')
+      if (storedProject) {
+        const parsedProject = JSON.parse(storedProject)
+        projectName.value = parsedProject
+        projectId.value = parsedProject?.id || null
+        console.log('Loyiha ma\'lumotlari:', parsedProject)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Loyiha ma\'lumotlarini o\'qishda xatolik:', error)
+      return false
+    }
   }
   
-  // projectId ni to'g'ri olish
-  const projectId = projectName?.id
-  console.log('Loyiha ID:', projectId)
+  // URL dan loyiha ID olish (agar sessionStorage'da bo'lmasa)
+  const getProjectFromUrl = () => {
+    const urlProjectId = route.params.id
+    if (urlProjectId) {
+      projectId.value = urlProjectId
+      // Bu yerda Firestore'dan loyiha ma'lumotlarini olish mumkin
+      return true
+    }
+    return false
+  }
   
-  // Agar projectId bo'lmasa xatolik xabarini ko'rsatish
-  if (!projectId) {
-    console.error('Loyiha ID topilmadi! Loyiha ma\'lumotlari:', projectName)
+  // Loyiha ma'lumotlarini aniqlash
+  const initializeProject = () => {
+    let success = getProjectFromStorage()
+    
+    if (!success) {
+      success = getProjectFromUrl()
+    }
+    
+    if (!success) {
+      console.error('Loyiha ma\'lumotlari topilmadi!')
+      projectName.value = { name: 'Noma\'lum loyiha', id: null }
+      projectId.value = null
+    }
+    
+    return success
   }
   
   const columns = ref([
@@ -161,7 +211,7 @@
     description: '', 
     priority: 'medium',
     date: '',
-    projectName: projectName?.name || '' // Loyiha nomini vazifaga qo'shamiz
+    projectName: '' 
   })
   
   const editTaskData = ref({ 
@@ -179,21 +229,61 @@
   const isEditModalOpen = ref(false)
   const isDeleteModalOpen = ref(false)
   
-  // Loyiha ID bo'yicha vazifalarni olish
-  const fetchTasks = async () => {
-    if (!projectId) {
-      console.error('Loyiha ID topilmadi! Vazifalarni yuklab bo\'lmaydi.')
+  // Ma'lumotlarni yangilash uchun real-time listener
+  let unsubscribe = null
+  
+  // Loyiha ID bo'yicha vazifalarni olish - real-time listener bilan
+  const setupTasksListener = () => {
+    if (!projectId.value || !projectName.value?.name) {
+      console.error('Loyiha ma\'lumotlari to\'liq emas, real-time tinglovchi o\'rnatilmadi')
+      isLoading.value = false
       return
     }
     
     try {
-      // Loyiha ID bo'yicha vazifalarni filtrlash
-      const q = query(taskCollection, where('projectName', '==', projectName.name))
+      // Oldingi tinglovchini o'chirish
+      if (unsubscribe) {
+        unsubscribe()
+      }
+      
+      // Yangi real-time tinglovchi o'rnatish
+      const q = query(taskCollection, where('projectName', '==', projectName.value.name))
+      
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        tasks.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        console.log(`Loyiha "${projectName.value?.name}" uchun ${tasks.value.length} ta vazifa yuklandi.`)
+        isLoading.value = false
+      }, (error) => {
+        console.error('Real-time ma\'lumotlarni olishda xatolik:', error)
+        isLoading.value = false
+      })
+      
+    } catch (error) {
+      console.error('Vazifalarni tinglovchisini o\'rnatishda xatolik:', error)
+      isLoading.value = false
+    }
+  }
+  
+  // Oddiy vazifalarni olish (real-time listener o'rniga)
+  const fetchTasks = async () => {
+    if (!projectId.value || !projectName.value?.name) {
+      console.error('Loyiha ma\'lumotlari to\'liq emas, vazifalar yuklanmadi')
+      isLoading.value = false
+      return
+    }
+    
+    isLoading.value = true
+    
+    try {
+      // Loyiha nomi bo'yicha vazifalarni filtrlash
+      const q = query(taskCollection, where('projectName', '==', projectName.value.name))
       const snapshot = await getDocs(q)
       tasks.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      console.log(`Loyiha "${projectName?.name}" uchun ${tasks.value.length} ta vazifa yuklandi.`)
+      console.log(`Loyiha "${projectName.value?.name}" uchun ${tasks.value.length} ta vazifa yuklandi.`)
     } catch (error) {
       console.error('Vazifalarni yuklashda xatolik:', error)
+    } finally {
+      isLoading.value = false
     }
   }
   
@@ -201,9 +291,17 @@
   const filteredTasks = (status) => {
     return tasks.value.filter((t) => t.status === status)
   }
-    const clearSessionStorage = () => {
-        sessionStorage.removeItem('currentProjectName') // sessionStorage-dan currentProjectName ni o'chirish
-    }
+  
+  // Ma'lumotlarni yangilash uchun funksiya
+  const refreshData = async () => {
+    await fetchTasks()
+  }
+  
+  // SessionStorage'ni tozalash
+  const clearSessionStorage = () => {
+    sessionStorage.removeItem('currentProjectName')
+  }
+  
   // Drag and drop funksiyalari
   const onDragStart = (task) => {
     currentDragTask.value = task
@@ -214,8 +312,8 @@
       try {
         const docRef = doc(db, 'tasks', currentDragTask.value.id)
         await updateDoc(docRef, { status: newStatus })
-        await fetchTasks()
         currentDragTask.value = null
+        // Real-time listener bo'lgani uchun ma'lumotlar avtomatik yangilanadi
       } catch (error) {
         console.error('Vazifa statusini yangilashda xatolik:', error)
       }
@@ -224,8 +322,14 @@
   
   // Modallarni ochish
   const openAddTaskModal = (status) => {
-    newTask.value.status = status
-    newTask.value.projectName = projectName?.name || ''
+    newTask.value = {
+      title: '', 
+      description: '', 
+      priority: 'medium',
+      date: '',
+      status: status,
+      projectName: projectName.value?.name || ''
+    }
     isAddModalOpen.value = true
   }
   
@@ -242,25 +346,10 @@
   // Modallarni yopish
   const closeAddTaskModal = () => {
     isAddModalOpen.value = false
-    newTask.value = { 
-      title: '', 
-      description: '', 
-      priority: 'medium',
-      date: '',
-      projectName: projectName?.name || '' 
-    }
   }
   
   const closeEditTaskModal = () => {
     isEditModalOpen.value = false
-    editTaskData.value = { 
-      id: '', 
-      title: '', 
-      description: '', 
-      priority: 'medium',
-      date: '',
-      projectName: '' 
-    }
   }
   
   const closeDeleteModal = () => {
@@ -275,15 +364,15 @@
       return
     }
   
-    if (!projectId) {
+    if (!projectId.value) {
       alert('Loyiha ID topilmadi! Iltimos sahifani qayta yuklang yoki boshqa loyihani tanlang.')
       return
     }
   
     try {
       const taskData = {
-        projectId: projectId,
-        projectName: projectName?.name || '',
+        projectId: projectId.value,
+        projectName: projectName.value?.name || '',
         title: newTask.value.title,
         description: newTask.value.description,
         status: newTask.value.status,
@@ -294,7 +383,7 @@
       
       console.log('Yangi vazifa ma\'lumotlari:', taskData)
       await addDoc(taskCollection, taskData)
-      await fetchTasks()
+      // Real-time listener bo'lgani uchun ma'lumotlar avtomatik yangilanadi
       closeAddTaskModal()
     } catch (error) {
       console.error('Vazifa qo\'shishda xatolik:', error)
@@ -317,7 +406,7 @@
         date: editTaskData.value.date || null,
         updatedAt: new Date()
       })
-      await fetchTasks()
+      // Real-time listener bo'lgani uchun ma'lumotlar avtomatik yangilanadi
       closeEditTaskModal()
     } catch (error) {
       console.error('Vazifani yangilashda xatolik:', error)
@@ -328,7 +417,7 @@
   const deleteTaskFromFirestore = async () => {
     try {
       await deleteDoc(doc(db, 'tasks', taskToDelete.value))
-      await fetchTasks()
+      // Real-time listener bo'lgani uchun ma'lumotlar avtomatik yangilanadi
       closeDeleteModal()
     } catch (error) {
       console.error('Vazifani o\'chirishda xatolik:', error)
@@ -336,8 +425,30 @@
     }
   }
   
-  // Sahifa yuklanganda vazifalarni yuklash
+  // Projektni ma'lumotlarini nazorat qilish
+  watch(() => projectId.value, (newId) => {
+    if (newId) {
+      setupTasksListener()
+    }
+  })
+  
+  // Sahifa yuklanganda loyiha ma'lumotlarini va vazifalarni yuklash
   onMounted(() => {
-    fetchTasks()
+    const success = initializeProject()
+    
+    if (success) {
+      // Yangilanuvchi ma'lumotlar uchun tinglovchini o'rnatish
+      setupTasksListener()
+    } else {
+      // Ma'lumotlar topilmasa yuklanayotgan indikatorni o'chirish
+      isLoading.value = false
+    }
+    
+    // Komponent o'chirilganda tinglovchini tozalash
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
   })
   </script>
