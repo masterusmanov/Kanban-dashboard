@@ -13,6 +13,7 @@ const router = createRouter({
       path: "/",
       name: "home",
       component: Dashboard,
+      meta: { requiresAuth: true },
       children: [
         {
           path: "/tasks",
@@ -47,10 +48,12 @@ const getCurrentUser = () => {
         removeListener();
         resolve(user);
       },
-        reject(null)
-      );
-    }
-  );
+      (error) => {
+        removeListener();
+        reject(error);
+      }
+    );
+  });
 }
 router.beforeEach(async(to, from, next) => {
   if(to.matched.some((record) => record.meta.requiresAuth)) {

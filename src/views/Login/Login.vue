@@ -38,12 +38,6 @@
               class="block text-sm font-medium text-black flex justify-between"
             >
               <span>Your password</span>
-              <router-link
-                to="/forgot-password"
-                class="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Forgot password?
-              </router-link>
             </label>
             <input
               id="password"
