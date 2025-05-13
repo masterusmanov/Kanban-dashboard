@@ -38,6 +38,7 @@
               class="block text-sm font-medium text-black flex justify-between"
             >
               <span>Your password</span>
+              
             </label>
             <input
               id="password"
@@ -121,7 +122,7 @@
         .then((userCredential) => {
           const user = userCredential.user;
           console.log('User logged:', user);
-            localStorage.setItem('user', JSON.stringify(user));
+            sessionStorage.setItem('user', JSON.stringify(user));
           router.push("/projects");
         })
         .catch((error) => {
@@ -149,7 +150,7 @@ const handleGoogleSignIn = () => {
         .then((result) => {
             const user = result.user;
           console.log('User signed in with Google:', user);
-            localStorage.setItem('user', JSON.stringify(user));
+            sessionStorage.setItem('user', JSON.stringify(user));
             router.push("/projects");
         })
         .catch((error) => {

@@ -80,8 +80,8 @@ const projects = ref([])
 const projectCollection = collection(db, 'projects')
 
 const fetchProjects = async () => {
-  // localStorage dan foydalanuvchi ma'lumotini olish
-  const userData = JSON.parse(localStorage.getItem('user')) || {}
+  // Sessionstorage dan foydalanuvchi ma'lumotini olish
+  const userData = JSON.parse(sessionStorage.getItem('user')) || {}
   const uid = userData.uid || ''
   
   // Faqat joriy foydalanuvchiga tegishli proyektlarni olish
@@ -92,8 +92,8 @@ const fetchProjects = async () => {
 }
 
 const saveProject = async () => {
-  // localStorage dan foydalanuvchi ma'lumotini olish
-  const userData = JSON.parse(localStorage.getItem('user')) || {}
+  // Sessionstorage dan foydalanuvchi ma'lumotini olish
+  const userData = JSON.parse(sessionStorage.getItem('user')) || {}
   const uid = userData.uid || ''
   
   // Loyiha ma'lumotlarini tayyorlash (UID bilan birga)
@@ -128,7 +128,7 @@ const remove = async (id) => {
 }
 
 const goToTasks = (project) => {
-  localStorage.setItem('currentProjectName', JSON.stringify(project))
+  sessionStorage.setItem('currentProjectName', JSON.stringify(project))
   router.push({ name: 'TaskBoard', params: { projectId: project.id } })
 }
 
