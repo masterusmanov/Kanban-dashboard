@@ -41,31 +41,59 @@ const router = createRouter({
 });
 
 const getCurrentUser = () => {
-  return new Promise((resolve, reject) => { 
-    const removeListener = onAuthStateChanged(
-      getAuth(),
-      (user) => {
-        removeListener();
+  return new Promise((resolve, reject) => {
+    const auth = getAuth();
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
         resolve(user);
-      },
-      (error) => {
-        removeListener();
-        reject(error);
+      } else {
+        reject("User not authenticated");
       }
-    );
+    });
   });
-}
-router.beforeEach(async(to, from, next) => {
-  if(to.matched.some((record) => record.meta.requiresAuth)) {
-    if(await getCurrentUser()) {
+};
+
+// const getCurrentUser = () => {
+//   return new Promise((resolve, reject) => { 
+//     const removeListener = onAuthStateChanged(
+//       getAuth(),
+//       (user) => {
+//         removeListener();
+//         resolve(user);
+//       },
+//       (error) => {
+//         removeListener();
+//         reject(error);
+//       }
+//     );
+//   });
+// }
+// router.beforeEach(async(to, from, next) => {
+//   if(to.matched.some((record) => record.meta.requiresAuth)) {
+//     if(await getCurrentUser()) {
+//       next();
+//     } else {
+//       alert("You need to login to access this page");
+//       next("/tasks")
+//     }
+//   } else {
+//     next();
+//   }
+// });
+
+router.beforeEach(async (to, from, next) => {
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
+    try {
+      const user = await getCurrentUser();
       next();
-    } else {
+    } catch (error) {
       alert("You need to login to access this page");
-      next("/tasks")
+      next("/login"); // /tasks emas, login sahifasiga yuborish
     }
   } else {
     next();
   }
 });
+
 
 export default router
