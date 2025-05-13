@@ -121,7 +121,7 @@
         .then((userCredential) => {
           const user = userCredential.user;
           console.log('User logged:', user);
-            sessionStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('user', JSON.stringify(user));
           router.push("/projects");
         })
         .catch((error) => {
@@ -149,7 +149,7 @@ const handleGoogleSignIn = () => {
         .then((result) => {
             const user = result.user;
           console.log('User signed in with Google:', user);
-            sessionStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('user', JSON.stringify(user));
             router.push("/projects");
         })
         .catch((error) => {

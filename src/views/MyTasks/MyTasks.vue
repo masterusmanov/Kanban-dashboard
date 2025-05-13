@@ -50,7 +50,7 @@
         </div>
       </div>
   
-      <router-link to="/projects" @click="clearSessionStorage" class="float-right my-[200px] mr-[100px] text-white font-simebold bg-[#8065EF] py-[5px] px-[15px] rounded-lg">Back</router-link>
+      <router-link to="/projects" @click="clearlocalStorage" class="float-right my-[200px] mr-[100px] text-white font-simebold bg-[#8065EF] py-[5px] px-[15px] rounded-lg">Back</router-link>
       <!-- Add Task Modal -->
       <div v-if="isAddModalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
         <div class="bg-white p-6 rounded-lg w-96">
@@ -130,7 +130,7 @@
   // Loyiha ma'lumotlarini olish
   let projectName = null
   try {
-    projectName = JSON.parse(sessionStorage.getItem('currentProjectName'))
+    projectName = JSON.parse(localStorage.getItem('currentProjectName'))
     console.log('Loyiha ma\'lumotlari:', projectName)
   } catch (error) {
     console.error('Loyiha ma\'lumotlarini o\'qishda xatolik:', error)
@@ -201,8 +201,8 @@
   const filteredTasks = (status) => {
     return tasks.value.filter((t) => t.status === status)
   }
-    const clearSessionStorage = () => {
-        sessionStorage.removeItem('currentProjectName') // sessionStorage-dan currentProjectName ni o'chirish
+    const clearlocalStorage = () => {
+        localStorage.removeItem('currentProjectName') // localStorage-dan currentProjectName ni o'chirish
     }
   // Drag and drop funksiyalari
   const onDragStart = (task) => {
